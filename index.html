@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenGradient PFP Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #6c63ff;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #6c63ff, #a78bfa, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: #888;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    .card {
+      background: #13131a;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-zone {
+      border: 2px dashed #3a3a5c;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #6c63ff;
+      background: #1a1a2e;
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .upload-zone p {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .upload-zone .upload-label {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .preview-container {
+      display: none;
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .preview-container img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      border: 1px solid #2a2a3a;
+    }
+
+    .preview-container .change-btn {
+      margin-top: 0.5rem;
+      background: none;
+      border: none;
+      color: #6c63ff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+
+    label.field-label {
+      display: block;
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 0.4rem;
+      margin-top: 1.25rem;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: #1a1a2e;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: #6c63ff;
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .hint { font-size: 0.78rem; color: #555; margin-top: 0.3rem; }
+
+    .generate-btn {
+      width: 100%;
+      margin-top: 1.75rem;
+      padding: 0.85rem;
+      background: linear-gradient(135deg, #6c63ff, #38bdf8);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .generate-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .generate-btn:active:not(:disabled) { transform: translateY(0); }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status {
+      text-align: center;
+      padding: 1rem;
+      color: #888;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #444;
+      border-top-color: #6c63ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-card {
+      display: none;
+      background: #13131a;
+      border: 1px solid #3a3a5c;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+    }
+
+    .result-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #a78bfa;
+    }
+
+    .result-card img {
+      width: 100%;
+      border-radius: 12px;
+      border: 2px solid #6c63ff;
+      margin-bottom: 1.25rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-download {
+      padding: 0.65rem 1.5rem;
+      background: linear-gradient(135deg, #6c63ff, #38bdf8);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-block;
+      transition: opacity 0.2s;
+    }
+
+    .btn-download:hover { opacity: 0.85; }
+
+    .btn-again {
+      padding: 0.65rem 1.5rem;
+      background: transparent;
+      border: 1px solid #3a3a5c;
+      border-radius: 8px;
+      color: #aaa;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-again:hover { border-color: #6c63ff; color: #e0e0e0; }
+
+    .cta-text {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #6c63ff;
+      font-weight: 600;
+    }
+
+    .error {
+      background: #2a1a1a;
+      border: 1px solid #5c2a2a;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #ff8080;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: #444;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">OpenGradient</div>
+  <h1>OG PFP Generator</h1>
+  <p class="subtitle">Get the OpenGradient look. Flex it on X.</p>
+
+  <div class="card">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*" />
+      <div class="upload-icon">📸</div>
+      <p><span class="upload-label">Click to upload</span> or drag & drop</p>
+      <p>your profile picture</p>
+    </div>
+
+    <div class="preview-container" id="previewContainer">
+      <img id="previewImg" src="" alt="Your PFP" />
+      <br />
+      <button class="change-btn" onclick="resetUpload()">Change photo</button>
+    </div>
+
+    <label class="field-label">Describe yourself (optional)</label>
+    <input type="text" id="descInput" placeholder="e.g. Asian woman, short hair, glasses" />
+    <div class="hint">Helps generate a more accurate result</div>
+
+    <label class="field-label">Extra vibe (optional)</label>
+    <textarea id="extraInput" placeholder="e.g. cyberpunk city background, neon lights"></textarea>
+
+    <div class="error" id="errorBox"></div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generate()">
+      Generate My OG PFP
+    </button>
+  </div>
+
+  <div class="status" id="status">
+    <span class="spinner"></span>
+    <span id="statusText">Generating your PFP...</span>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <h2>Your OpenGradient PFP is ready!</h2>
+    <img id="resultImg" src="" alt="Generated PFP" />
+    <div class="action-buttons">
+      <a class="btn-download" id="downloadBtn" href="#" download="opengradient-pfp.png">
+        Download
+      </a>
+      <button class="btn-again" onclick="resetAll()">Generate Another</button>
+    </div>
+    <p class="cta-text">Set it as your profile picture!</p>
+  </div>
+
+  <footer>Powered by Replicate &amp; OpenGradient</footer>
+
+  <script>
+    const REPLICATE_TOKEN = ""; // Paste your Replicate API token here: https://replicate.com/account/api-tokens
+    const MODEL = "google/nano-banana-pro";
+
+    let uploadedImageBase64 = null;
+
+    // Drag and drop
+    const uploadZone = document.getElementById("uploadZone");
+    uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+    uploadZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove("drag-over");
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("image/")) handleFile(file);
+    });
+
+    document.getElementById("fileInput").addEventListener("change", (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedImageBase64 = e.target.result;
+        document.getElementById("previewImg").src = uploadedImageBase64;
+        document.getElementById("uploadZone").style.display = "none";
+        document.getElementById("previewContainer").style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetUpload() {
+      uploadedImageBase64 = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("uploadZone").style.display = "block";
+      document.getElementById("previewContainer").style.display = "none";
+    }
+
+    function resetAll() {
+      resetUpload();
+      document.getElementById("resultCard").style.display = "none";
+      document.getElementById("status").style.display = "none";
+      document.getElementById("errorBox").style.display = "none";
+      document.getElementById("card") && (document.getElementById("card").style.display = "block");
+      document.querySelector(".card").style.display = "block";
+    }
+
+    function buildPrompt() {
+      const desc = document.getElementById("descInput").value.trim();
+      const extra = document.getElementById("extraInput").value.trim();
+
+      let base = "Professional profile picture, portrait photo";
+      if (desc) base += `, ${desc}`;
+      base += ", wearing stylish futuristic gradient sunglasses with a subtle purple-to-cyan gradient lens tint, OpenGradient AI tech style, clean confident expression, sharp modern look";
+      if (extra) base += `, ${extra}`;
+      base += ", high quality, photorealistic, 1:1 portrait";
+      return base;
+    }
+
+    async function generate() {
+      const btn = document.getElementById("generateBtn");
+      const status = document.getElementById("status");
+      const errorBox = document.getElementById("errorBox");
+
+      errorBox.style.display = "none";
+      btn.disabled = true;
+      status.style.display = "block";
+      document.getElementById("statusText").textContent = "Starting generation...";
+
+      try {
+        const input = {
+          prompt: buildPrompt(),
+          aspect_ratio: "1:1",
+          output_format: "png"
+        };
+
+        // If image was uploaded, include it
+        if (uploadedImageBase64) {
+          input.image = uploadedImageBase64;
+        }
+
+        // Create prediction
+        const createRes = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${REPLICATE_TOKEN}`,
+            "Content-Type": "application/json",
+            "Prefer": "wait"
+          },
+          body: JSON.stringify({ input })
+        });
+
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          throw new Error(err.detail || `API error: ${createRes.status}`);
+        }
+
+        let prediction = await createRes.json();
+
+        // Poll if not done
+        while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
+          document.getElementById("statusText").textContent = `Status: ${prediction.status}...`;
+          await sleep(1500);
+          const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
+            headers: { "Authorization": `Bearer ${REPLICATE_TOKEN}` }
+          });
+          prediction = await pollRes.json();
+        }
+
+        if (prediction.status !== "succeeded") {
+          throw new Error(prediction.error || "Generation failed");
+        }
+
+        const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+        if (!outputUrl) throw new Error("No output URL returned");
+
+        showResult(outputUrl);
+
+      } catch (err) {
+        errorBox.textContent = "Error: " + err.message;
+        errorBox.style.display = "block";
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        status.style.display = "none";
+      }
+    }
+
+    function showResult(url) {
+      document.querySelector(".card").style.display = "none";
+      const resultCard = document.getElementById("resultCard");
+      const resultImg = document.getElementById("resultImg");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      resultImg.src = url;
+      downloadBtn.href = url;
+      resultCard.style.display = "block";
+      resultCard.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  </script>
+</body>
+</html>
