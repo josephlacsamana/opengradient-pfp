@@ -78,20 +78,10 @@
       height: 100%;
     }
 
-    .upload-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.75rem;
-    }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
 
-    .upload-zone p {
-      color: #888;
-      font-size: 0.9rem;
-    }
-
-    .upload-zone .upload-label {
-      color: #a78bfa;
-      font-weight: 600;
-    }
+    .upload-zone p { color: #888; font-size: 0.9rem; }
+    .upload-zone .upload-label { color: #a78bfa; font-weight: 600; }
 
     .preview-container {
       display: none;
@@ -115,34 +105,6 @@
       font-size: 0.85rem;
       text-decoration: underline;
     }
-
-    label.field-label {
-      display: block;
-      font-size: 0.85rem;
-      color: #aaa;
-      margin-bottom: 0.4rem;
-      margin-top: 1.25rem;
-    }
-
-    input[type="text"], textarea {
-      width: 100%;
-      background: #1a1a2e;
-      border: 1px solid #2a2a3a;
-      border-radius: 8px;
-      color: #e0e0e0;
-      padding: 0.65rem 0.9rem;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus, textarea:focus {
-      border-color: #6c63ff;
-    }
-
-    textarea { resize: vertical; min-height: 80px; }
-
-    .hint { font-size: 0.78rem; color: #555; margin-top: 0.3rem; }
 
     .generate-btn {
       width: 100%;
@@ -264,6 +226,13 @@
       display: none;
     }
 
+    .models-loading {
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+
     footer {
       margin-top: 2rem;
       color: #444;
@@ -277,7 +246,7 @@
   <h1>OG PFP Generator</h1>
   <p class="subtitle">Get the OpenGradient look. Flex it on X.</p>
 
-  <div class="card">
+  <div class="card" id="uploadCard">
     <div class="upload-zone" id="uploadZone">
       <input type="file" id="fileInput" accept="image/*" />
       <div class="upload-icon">📸</div>
@@ -291,23 +260,17 @@
       <button class="change-btn" onclick="resetUpload()">Change photo</button>
     </div>
 
-    <label class="field-label">Describe yourself (optional)</label>
-    <input type="text" id="descInput" placeholder="e.g. Asian woman, short hair, glasses" />
-    <div class="hint">Helps generate a more accurate result</div>
-
-    <label class="field-label">Extra vibe (optional)</label>
-    <textarea id="extraInput" placeholder="e.g. cyberpunk city background, neon lights"></textarea>
-
     <div class="error" id="errorBox"></div>
 
-    <button class="generate-btn" id="generateBtn" onclick="generate()">
-      Generate My OG PFP
+    <button class="generate-btn" id="generateBtn" onclick="generate()" disabled>
+      Apply OG Sunglasses
     </button>
+    <p class="models-loading" id="modelsStatus">Loading face detection...</p>
   </div>
 
   <div class="status" id="status">
     <span class="spinner"></span>
-    <span id="statusText">Generating your PFP...</span>
+    <span id="statusText">Detecting face...</span>
   </div>
 
   <div class="result-card" id="resultCard">
@@ -317,155 +280,176 @@
       <a class="btn-download" id="downloadBtn" href="#" download="opengradient-pfp.png">
         Download
       </a>
-      <button class="btn-again" onclick="resetAll()">Generate Another</button>
+      <button class="btn-again" onclick="resetAll()">Try Another</button>
     </div>
     <p class="cta-text">Set it as your profile picture!</p>
   </div>
 
-  <footer>Powered by Replicate &amp; OpenGradient</footer>
+  <footer>Powered by OpenGradient</footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
   <script>
-    const REPLICATE_TOKEN = ""; // Paste your Replicate API token here: https://replicate.com/account/api-tokens
-    const MODEL = "google/nano-banana-pro";
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
 
-    let uploadedImageBase64 = null;
+    let modelsLoaded = false;
+    let uploadedImg = null;
+    let sunglassesCanvas = null;
 
-    // Drag and drop
-    const uploadZone = document.getElementById("uploadZone");
-    uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
-    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
-    uploadZone.addEventListener("drop", (e) => {
+    // Load models + sunglasses on startup
+    (async function init() {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+        ]);
+        const raw = await loadImage('assets/sunglasses.png');
+        sunglassesCanvas = removeWhiteBackground(raw);
+        modelsLoaded = true;
+        document.getElementById('modelsStatus').style.display = 'none';
+        if (uploadedImg) document.getElementById('generateBtn').disabled = false;
+      } catch (err) {
+        document.getElementById('modelsStatus').textContent = 'Failed to load models. Try refreshing.';
+        console.error(err);
+      }
+    })();
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function removeWhiteBackground(img, threshold = 235) {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, c.width, c.height);
+      const px = imageData.data;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i] > threshold && px[i + 1] > threshold && px[i + 2] > threshold) {
+          px[i + 3] = 0;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      return c;
+    }
+
+    function avgPoint(pts) {
+      return {
+        x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+        y: pts.reduce((s, p) => s + p.y, 0) / pts.length
+      };
+    }
+
+    // Drag & drop
+    const uploadZone = document.getElementById('uploadZone');
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
       e.preventDefault();
-      uploadZone.classList.remove("drag-over");
+      uploadZone.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith("image/")) handleFile(file);
+      if (file?.type.startsWith('image/')) handleFile(file);
     });
-
-    document.getElementById("fileInput").addEventListener("change", (e) => {
+    document.getElementById('fileInput').addEventListener('change', e => {
       if (e.target.files[0]) handleFile(e.target.files[0]);
     });
 
     function handleFile(file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        uploadedImageBase64 = e.target.result;
-        document.getElementById("previewImg").src = uploadedImageBase64;
-        document.getElementById("uploadZone").style.display = "none";
-        document.getElementById("previewContainer").style.display = "block";
+      reader.onload = async e => {
+        const dataUrl = e.target.result;
+        document.getElementById('previewImg').src = dataUrl;
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'block';
+        uploadedImg = await loadImage(dataUrl);
+        document.getElementById('generateBtn').disabled = !modelsLoaded;
       };
       reader.readAsDataURL(file);
     }
 
+    async function generate() {
+      const btn = document.getElementById('generateBtn');
+      const errorBox = document.getElementById('errorBox');
+      errorBox.style.display = 'none';
+      btn.disabled = true;
+      document.getElementById('status').style.display = 'block';
+
+      try {
+        const detection = await faceapi
+          .detectSingleFace(uploadedImg, new faceapi.TinyFaceDetectorOptions({ inputSize: 512 }))
+          .withFaceLandmarks();
+
+        if (!detection) throw new Error('No face detected. Try a clearer, front-facing photo.');
+
+        const lm = detection.landmarks;
+        const leftEye = avgPoint(lm.getLeftEye());
+        const rightEye = avgPoint(lm.getRightEye());
+
+        const dx = rightEye.x - leftEye.x;
+        const dy = rightEye.y - leftEye.y;
+        const angle = Math.atan2(dy, dx);
+        const eyeDist = Math.hypot(dx, dy);
+
+        // Scale sunglasses to span ~3x inter-eye distance (temple to temple)
+        const glassesW = eyeDist * 3.2;
+        const glassesH = glassesW * (sunglassesCanvas.height / sunglassesCanvas.width);
+
+        // Position at eye midpoint, shifted slightly up
+        const cx = (leftEye.x + rightEye.x) / 2;
+        const cy = (leftEye.y + rightEye.y) / 2 - eyeDist * 0.15;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = uploadedImg.naturalWidth;
+        canvas.height = uploadedImg.naturalHeight;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(uploadedImg, 0, 0);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        ctx.drawImage(sunglassesCanvas, -glassesW / 2, -glassesH / 2, glassesW, glassesH);
+        ctx.restore();
+
+        showResult(canvas.toDataURL('image/png'));
+      } catch (err) {
+        errorBox.textContent = 'Error: ' + err.message;
+        errorBox.style.display = 'block';
+        btn.disabled = false;
+      } finally {
+        document.getElementById('status').style.display = 'none';
+      }
+    }
+
+    function showResult(dataUrl) {
+      document.getElementById('uploadCard').style.display = 'none';
+      document.getElementById('resultImg').src = dataUrl;
+      document.getElementById('downloadBtn').href = dataUrl;
+      const resultCard = document.getElementById('resultCard');
+      resultCard.style.display = 'block';
+      resultCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
     function resetUpload() {
-      uploadedImageBase64 = null;
-      document.getElementById("fileInput").value = "";
-      document.getElementById("uploadZone").style.display = "block";
-      document.getElementById("previewContainer").style.display = "none";
+      uploadedImg = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('uploadZone').style.display = 'block';
+      document.getElementById('previewContainer').style.display = 'none';
+      document.getElementById('generateBtn').disabled = true;
+      document.getElementById('errorBox').style.display = 'none';
     }
 
     function resetAll() {
       resetUpload();
-      document.getElementById("resultCard").style.display = "none";
-      document.getElementById("status").style.display = "none";
-      document.getElementById("errorBox").style.display = "none";
-      document.getElementById("card") && (document.getElementById("card").style.display = "block");
-      document.querySelector(".card").style.display = "block";
+      document.getElementById('resultCard').style.display = 'none';
+      document.getElementById('uploadCard').style.display = 'block';
     }
-
-    function buildPrompt() {
-      const desc = document.getElementById("descInput").value.trim();
-      const extra = document.getElementById("extraInput").value.trim();
-
-      let base = "Professional profile picture, portrait photo";
-      if (desc) base += `, ${desc}`;
-      base += ", wearing stylish futuristic gradient sunglasses with a subtle purple-to-cyan gradient lens tint, OpenGradient AI tech style, clean confident expression, sharp modern look";
-      if (extra) base += `, ${extra}`;
-      base += ", high quality, photorealistic, 1:1 portrait";
-      return base;
-    }
-
-    async function generate() {
-      const btn = document.getElementById("generateBtn");
-      const status = document.getElementById("status");
-      const errorBox = document.getElementById("errorBox");
-
-      errorBox.style.display = "none";
-      btn.disabled = true;
-      status.style.display = "block";
-      document.getElementById("statusText").textContent = "Starting generation...";
-
-      try {
-        const input = {
-          prompt: buildPrompt(),
-          aspect_ratio: "1:1",
-          output_format: "png"
-        };
-
-        // If image was uploaded, include it
-        if (uploadedImageBase64) {
-          input.image = uploadedImageBase64;
-        }
-
-        // Create prediction
-        const createRes = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${REPLICATE_TOKEN}`,
-            "Content-Type": "application/json",
-            "Prefer": "wait"
-          },
-          body: JSON.stringify({ input })
-        });
-
-        if (!createRes.ok) {
-          const err = await createRes.json().catch(() => ({}));
-          throw new Error(err.detail || `API error: ${createRes.status}`);
-        }
-
-        let prediction = await createRes.json();
-
-        // Poll if not done
-        while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
-          document.getElementById("statusText").textContent = `Status: ${prediction.status}...`;
-          await sleep(1500);
-          const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
-            headers: { "Authorization": `Bearer ${REPLICATE_TOKEN}` }
-          });
-          prediction = await pollRes.json();
-        }
-
-        if (prediction.status !== "succeeded") {
-          throw new Error(prediction.error || "Generation failed");
-        }
-
-        const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-        if (!outputUrl) throw new Error("No output URL returned");
-
-        showResult(outputUrl);
-
-      } catch (err) {
-        errorBox.textContent = "Error: " + err.message;
-        errorBox.style.display = "block";
-        console.error(err);
-      } finally {
-        btn.disabled = false;
-        status.style.display = "none";
-      }
-    }
-
-    function showResult(url) {
-      document.querySelector(".card").style.display = "none";
-      const resultCard = document.getElementById("resultCard");
-      const resultImg = document.getElementById("resultImg");
-      const downloadBtn = document.getElementById("downloadBtn");
-
-      resultImg.src = url;
-      downloadBtn.href = url;
-      resultCard.style.display = "block";
-      resultCard.scrollIntoView({ behavior: "smooth" });
-    }
-
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   </script>
 </body>
 </html>
