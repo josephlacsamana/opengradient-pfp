@@ -1,455 +1,838 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenGradient PFP Generator</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PFP Studio | OpenGradient</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000000;--bg2:#050510;--cyan:#00E5FF;--violet:#7B2FFF;
+  --white:#FFFFFF;--navy:#1A1A2E;
+  --font-mono:'Space Mono',monospace;--font-body:'Inter',sans-serif;--font-code:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg2);color:var(--white);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0a0a0f;
-      color: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1rem;
-    }
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);}
+.ghost-text{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.ghost-item{position:absolute;font-family:var(--font-code);font-size:11px;color:rgba(0,229,255,0.055);white-space:nowrap;animation:ghostFloat linear infinite;}
+@keyframes ghostFloat{0%{opacity:0;transform:translateY(0)}10%{opacity:1}90%{opacity:1}100%{opacity:0;transform:translateY(-60px)}}
 
-    .logo {
-      font-size: 1.1rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: #6c63ff;
-      text-transform: uppercase;
-      margin-bottom: 0.5rem;
-    }
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 40px;background:linear-gradient(to bottom,rgba(5,5,16,0.95),transparent);backdrop-filter:blur(8px);}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:0.05em;color:var(--white);text-decoration:none;}
+.logo-mark{width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+.nav-links{display:flex;gap:32px;align-items:center;}
+.nav-links a{font-family:var(--font-mono);font-size:12px;letter-spacing:0.12em;color:rgba(255,255,255,0.5);text-decoration:none;text-transform:uppercase;transition:color 0.2s;}
+.nav-links a:hover{color:var(--cyan);}
+.nav-badge{font-family:var(--font-code);font-size:10px;letter-spacing:0.1em;padding:4px 10px;border:1px solid var(--cyan);color:var(--cyan);text-transform:uppercase;animation:pulseBorder 2s ease-in-out infinite;}
+@keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0.4)}50%{box-shadow:0 0 12px 2px rgba(0,229,255,0.15)}}
 
-    h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #6c63ff, #a78bfa, #38bdf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-align: center;
-      margin-bottom: 0.5rem;
-    }
+.page-wrap{position:relative;z-index:10;padding:120px 40px 0;}
+.hero{text-align:center;margin-bottom:56px;}
+.hero-eyebrow{font-family:var(--font-code);font-size:11px;letter-spacing:0.3em;color:var(--cyan);text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:blink 1.2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.hero h1{font-family:var(--font-mono);font-weight:700;font-size:clamp(26px,4vw,52px);line-height:1.05;letter-spacing:-0.01em;text-transform:uppercase;margin-bottom:14px;}
+.hero h1 .accent{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-family:var(--font-code);font-size:11px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;}
 
-    .subtitle {
-      color: #888;
-      margin-bottom: 2.5rem;
-      text-align: center;
-    }
+.slots-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(0,229,255,0.08);}
+@media(max-width:1200px){.slots-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.slots-grid{grid-template-columns:1fr;}}
 
-    .card {
-      background: #13131a;
-      border: 1px solid #2a2a3a;
-      border-radius: 16px;
-      padding: 2rem;
-      width: 100%;
-      max-width: 480px;
-      margin-bottom: 1.5rem;
-    }
+.slot{background:var(--bg2);padding:28px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;transition:background 0.3s;}
+.slot:hover{background:#080820;}
+.slot::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);transform:scaleX(0);transition:transform 0.4s;}
+.slot:hover::before{transform:scaleX(1);}
+.slot-num{font-family:var(--font-code);font-size:10px;letter-spacing:0.2em;color:rgba(0,229,255,0.4);text-transform:uppercase;}
+.slot-title{font-family:var(--font-mono);font-weight:700;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;}
+.slot-tag{display:inline-block;font-family:var(--font-code);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid rgba(123,47,255,0.4);color:var(--violet);}
 
-    .upload-zone {
-      border: 2px dashed #3a3a5c;
-      border-radius: 12px;
-      padding: 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
+.upload-zone{border:1.5px dashed rgba(0,229,255,0.3);background:rgba(0,229,255,0.02);min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;overflow:hidden;transition:border-color 0.2s,background 0.2s;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:rgba(0,229,255,0.7);background:rgba(0,229,255,0.05);}
+.upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon-box{width:34px;height:34px;border:1.5px solid rgba(0,229,255,0.3);display:flex;align-items:center;justify-content:center;transition:border-color 0.2s;}
+.upload-zone:hover .upload-icon-box,.upload-zone.drag-over .upload-icon-box{border-color:var(--cyan);}
+.upload-main-label{font-family:var(--font-mono);font-weight:700;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;}
+.upload-sub-label{font-family:var(--font-code);font-size:10px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);text-transform:uppercase;}
+.drop-scan{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0;}
+.upload-zone:hover .drop-scan,.upload-zone.drag-over .drop-scan{opacity:0.5;animation:scanMove 1.8s linear infinite;}
+@keyframes scanMove{from{transform:translateY(0)}to{transform:translateY(128px)}}
 
-    .upload-zone:hover, .upload-zone.drag-over {
-      border-color: #6c63ff;
-      background: #1a1a2e;
-    }
+.preview-container{display:none;text-align:center;}
+.preview-container img{max-width:100%;max-height:130px;border:1px solid rgba(0,229,255,0.25);object-fit:contain;}
+.change-btn{margin-top:6px;background:none;border:none;color:rgba(0,229,255,0.5);cursor:pointer;font-family:var(--font-code);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;transition:color 0.2s;}
+.change-btn:hover{color:var(--cyan);}
 
-    .upload-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
+.generate-btn{width:100%;padding:11px;background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-family:var(--font-mono);font-weight:700;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color 0.25s;}
+.generate-btn::before{content:'';position:absolute;inset:0;background:var(--cyan);transform:translateX(-100%);transition:transform 0.25s;}
+.generate-btn:hover:not(:disabled)::before{transform:translateX(0);}
+.generate-btn:hover:not(:disabled){color:#000;}
+.generate-btn span{position:relative;z-index:1;}
+.generate-btn:disabled{opacity:0.25;cursor:not-allowed;}
 
-    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.status{display:none;}
+.status-text{font-family:var(--font-code);font-size:10px;letter-spacing:0.1em;color:var(--cyan);text-transform:uppercase;}
+.scan-bar-wrap{width:100%;height:2px;background:rgba(0,229,255,0.1);position:relative;overflow:hidden;margin-top:8px;}
+.scan-bar{position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scanBar 1.2s ease-in-out infinite;}
+@keyframes scanBar{from{left:-40%}to{left:100%}}
 
-    .upload-zone p { color: #888; font-size: 0.9rem; }
-    .upload-zone .upload-label { color: #a78bfa; font-weight: 600; }
+.result-canvas{width:100%;border:1px solid rgba(0,229,255,0.25);display:none;}
+.result-actions{display:none;gap:8px;}
+.btn-dl,.btn-pk{flex:1;padding:10px 6px;font-family:var(--font-mono);font-weight:700;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color 0.25s;background:transparent;}
+.btn-dl::before,.btn-pk::before{content:'';position:absolute;inset:0;transform:translateX(-100%);transition:transform 0.25s;}
+.btn-dl:hover::before,.btn-pk:hover::before{transform:translateX(0);}
+.btn-dl span,.btn-pk span{position:relative;z-index:1;}
+.btn-dl{border:1.5px solid var(--cyan);color:var(--cyan);}
+.btn-dl::before{background:var(--cyan);}
+.btn-dl:hover{color:#000;}
+.btn-pk{border:1.5px solid rgba(123,47,255,0.7);color:var(--violet);}
+.btn-pk::before{background:var(--violet);}
+.btn-pk:hover{color:#fff;}
 
-    .preview-container {
-      display: none;
-      margin-top: 1rem;
-      text-align: center;
-    }
+.error-box{font-family:var(--font-code);font-size:10px;letter-spacing:0.08em;color:#ff5555;text-transform:uppercase;padding:8px 12px;border:1px solid rgba(255,85,85,0.3);background:rgba(255,85,85,0.05);display:none;}
 
-    .preview-container img {
-      max-width: 100%;
-      max-height: 200px;
-      border-radius: 8px;
-      border: 1px solid #2a2a3a;
-    }
+.pick-toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--violet);color:#fff;font-family:var(--font-mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;padding:10px 24px;opacity:0;pointer-events:none;transition:opacity 0.3s,transform 0.3s;z-index:999;}
+.pick-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-    .preview-container .change-btn {
-      margin-top: 0.5rem;
-      background: none;
-      border: none;
-      color: #6c63ff;
-      cursor: pointer;
-      font-size: 0.85rem;
-      text-decoration: underline;
-    }
+footer{position:relative;z-index:10;padding:40px;border-top:1px solid rgba(0,229,255,0.08);display:flex;align-items:center;justify-content:space-between;background:var(--bg);margin-top:80px;}
+.footer-copy{font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;color:rgba(255,255,255,0.25);text-transform:uppercase;}
+.footer-links{display:flex;gap:24px;}
+.footer-links a{font-family:var(--font-code);font-size:10px;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-decoration:none;text-transform:uppercase;transition:color 0.2s;}
+.footer-links a:hover{color:var(--cyan);}
 
-    .generate-btn {
-      width: 100%;
-      margin-top: 1.75rem;
-      padding: 0.85rem;
-      background: linear-gradient(135deg, #6c63ff, #38bdf8);
-      border: none;
-      border-radius: 10px;
-      color: white;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      letter-spacing: 0.04em;
-      transition: opacity 0.2s, transform 0.1s;
-    }
-
-    .generate-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-    .generate-btn:active:not(:disabled) { transform: translateY(0); }
-    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .status {
-      text-align: center;
-      padding: 1rem;
-      color: #888;
-      font-size: 0.9rem;
-      display: none;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 18px;
-      height: 18px;
-      border: 2px solid #444;
-      border-top-color: #6c63ff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 0.5rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .result-card {
-      display: none;
-      background: #13131a;
-      border: 1px solid #3a3a5c;
-      border-radius: 16px;
-      padding: 2rem;
-      width: 100%;
-      max-width: 480px;
-      text-align: center;
-    }
-
-    .result-card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-      color: #a78bfa;
-    }
-
-    .result-card img {
-      width: 100%;
-      border-radius: 12px;
-      border: 2px solid #6c63ff;
-      margin-bottom: 1.25rem;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .btn-download {
-      padding: 0.65rem 1.5rem;
-      background: linear-gradient(135deg, #6c63ff, #38bdf8);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.9rem;
-      text-decoration: none;
-      display: inline-block;
-      transition: opacity 0.2s;
-    }
-
-    .btn-download:hover { opacity: 0.85; }
-
-    .btn-again {
-      padding: 0.65rem 1.5rem;
-      background: transparent;
-      border: 1px solid #3a3a5c;
-      border-radius: 8px;
-      color: #aaa;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: border-color 0.2s, color 0.2s;
-    }
-
-    .btn-again:hover { border-color: #6c63ff; color: #e0e0e0; }
-
-    .cta-text {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      color: #6c63ff;
-      font-weight: 600;
-    }
-
-    .error {
-      background: #2a1a1a;
-      border: 1px solid #5c2a2a;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      color: #ff8080;
-      font-size: 0.85rem;
-      margin-top: 1rem;
-      display: none;
-    }
-
-    .models-loading {
-      text-align: center;
-      color: #555;
-      font-size: 0.8rem;
-      margin-top: 1rem;
-    }
-
-    footer {
-      margin-top: 2rem;
-      color: #444;
-      font-size: 0.8rem;
-    }
-  </style>
+@media(max-width:768px){
+  nav{padding:14px 16px;}
+  .nav-links{gap:14px;}
+  .nav-links a{font-size:10px;}
+  .page-wrap{padding:88px 0 0;}
+  .hero{padding:0 20px;margin-bottom:40px;}
+  .slot{padding:20px;}
+  footer{flex-direction:column;gap:16px;text-align:center;padding:24px 20px;}
+}
+</style>
 </head>
 <body>
 
-  <div class="logo">OpenGradient</div>
-  <h1>OG PFP Generator</h1>
-  <p class="subtitle">Get the OpenGradient look. Flex it on X.</p>
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="ghost-text" id="ghost-container" aria-hidden="true"></div>
 
-  <div class="card" id="uploadCard">
-    <div class="upload-zone" id="uploadZone">
-      <input type="file" id="fileInput" accept="image/*" />
-      <div class="upload-icon">📸</div>
-      <p><span class="upload-label">Click to upload</span> or drag & drop</p>
-      <p>your profile picture</p>
+<nav>
+  <a class="logo" href="#">
+    <div class="logo-mark">
+      <svg width="36" height="36" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M49.7015 4.20683C54.9998 -1.21945 63.7266 -1.21946 69.0249 4.20683L82.4085 17.9138C84.8715 20.4363 86.2503 23.822 86.2503 27.3476V32.6132H91.5153C95.0409 32.6132 98.4266 33.992 100.949 36.455L114.656 49.8386C120.082 55.1369 120.082 63.8637 114.656 69.162L100.949 82.5456C98.4266 85.0086 95.0409 86.3874 91.5153 86.3874H86.2503V91.6525C86.2503 95.178 84.8715 98.5637 82.4085 101.086L69.0249 114.793C63.7266 120.219 54.9998 120.219 49.7015 114.793L36.3179 101.086C33.8549 98.5637 32.4761 95.178 32.4761 91.6525V86.3874H27.2104C23.6849 86.3874 20.2992 85.0086 17.7767 82.5456L4.06971 69.162C-1.35656 63.8637 -1.35658 55.1369 4.06971 49.8386L17.7767 36.455C20.2992 33.992 23.6849 32.6132 27.2104 32.6132H32.4761V27.3476C32.4761 23.822 33.8549 20.4363 36.3179 17.9138L49.7015 4.20683ZM52.3998 59.5001C52.3998 63.3459 55.5174 66.4636 59.3633 66.4636C63.2091 66.4636 66.3267 63.3459 66.3267 59.5001C66.3267 55.6543 63.2091 52.5366 59.3633 52.5366C55.5174 52.5366 52.3998 55.6543 52.3998 59.5001Z" fill="#00E5FF"/>
+      </svg>
     </div>
+    OpenGradient
+  </a>
+  <div class="nav-links">
+    <a href="https://docs.opengradient.ai" target="_blank" rel="noopener">Docs</a>
+    <a href="https://www.opengradient.ai/blog" target="_blank" rel="noopener">Blog</a>
+    <a href="https://hub.opengradient.ai" target="_blank" rel="noopener">Hub</a>
+    <span class="nav-badge">PFP Studio</span>
+  </div>
+</nav>
 
-    <div class="preview-container" id="previewContainer">
-      <img id="previewImg" src="" alt="Your PFP" />
-      <br />
-      <button class="change-btn" onclick="resetUpload()">Change photo</button>
-    </div>
-
-    <div class="error" id="errorBox"></div>
-
-    <button class="generate-btn" id="generateBtn" onclick="generate()" disabled>
-      Apply OG Sunglasses
-    </button>
-    <p class="models-loading" id="modelsStatus">Loading face detection...</p>
+<div class="page-wrap">
+  <div class="hero">
+    <div class="hero-eyebrow"><div class="eyebrow-dot"></div>Badge Style Lab<div class="eyebrow-dot"></div></div>
+    <h1>OpenGradient <span class="accent">PFP Studio</span></h1>
+    <p class="hero-sub">Upload · Generate all 7 styles · Pick the best</p>
   </div>
 
-  <div class="status" id="status">
-    <span class="spinner"></span>
-    <span id="statusText">Detecting face...</span>
-  </div>
+  <div class="slots-grid">
 
-  <div class="result-card" id="resultCard">
-    <h2>Your OpenGradient PFP is ready!</h2>
-    <img id="resultImg" src="" alt="Generated PFP" />
-    <div class="action-buttons">
-      <a class="btn-download" id="downloadBtn" href="#" download="opengradient-pfp.png">
-        Download
-      </a>
-      <button class="btn-again" onclick="resetAll()">Try Another</button>
+    <!-- Option A: Floating Pill -->
+    <div class="slot" id="slot-a">
+      <div class="slot-num">01 // Option A</div>
+      <div class="slot-title">Floating Pill</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-a">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'a')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-a">
+        <img id="previewImg-a" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('a')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-a"></div>
+      <button class="generate-btn" id="generateBtn-a" onclick="generate('a')" disabled><span>Generate A</span></button>
+      <div class="status" id="status-a">
+        <div class="status-text" id="statusText-a">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-a" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-a">
+        <button class="btn-dl" onclick="downloadCanvas('a')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('a')"><span>&#9733; Pick</span></button>
+      </div>
     </div>
-    <p class="cta-text">Set it as your profile picture!</p>
+
+    <!-- Option B: Bottom Bar -->
+    <div class="slot" id="slot-b">
+      <div class="slot-num">02 // Option B</div>
+      <div class="slot-title">Bottom Bar</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-b">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'b')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-b">
+        <img id="previewImg-b" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('b')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-b"></div>
+      <button class="generate-btn" id="generateBtn-b" onclick="generate('b')" disabled><span>Generate B</span></button>
+      <div class="status" id="status-b">
+        <div class="status-text" id="statusText-b">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-b" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-b">
+        <button class="btn-dl" onclick="downloadCanvas('b')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('b')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+    <!-- Option C: Corner Tag -->
+    <div class="slot" id="slot-c">
+      <div class="slot-num">03 // Option C</div>
+      <div class="slot-title">Corner Tag</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-c">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'c')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-c">
+        <img id="previewImg-c" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('c')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-c"></div>
+      <button class="generate-btn" id="generateBtn-c" onclick="generate('c')" disabled><span>Generate C</span></button>
+      <div class="status" id="status-c">
+        <div class="status-text" id="statusText-c">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-c" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-c">
+        <button class="btn-dl" onclick="downloadCanvas('c')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('c')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+    <!-- Option D: Neon Glow Text -->
+    <div class="slot" id="slot-d">
+      <div class="slot-num">04 // Option D</div>
+      <div class="slot-title">Neon Glow</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-d">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'d')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-d">
+        <img id="previewImg-d" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('d')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-d"></div>
+      <button class="generate-btn" id="generateBtn-d" onclick="generate('d')" disabled><span>Generate D</span></button>
+      <div class="status" id="status-d">
+        <div class="status-text" id="statusText-d">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-d" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-d">
+        <button class="btn-dl" onclick="downloadCanvas('d')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('d')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+    <!-- Option E: Diagonal Ribbon -->
+    <div class="slot" id="slot-e">
+      <div class="slot-num">05 // Option E</div>
+      <div class="slot-title">Diagonal Ribbon</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-e">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'e')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-e">
+        <img id="previewImg-e" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('e')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-e"></div>
+      <button class="generate-btn" id="generateBtn-e" onclick="generate('e')" disabled><span>Generate E</span></button>
+      <div class="status" id="status-e">
+        <div class="status-text" id="statusText-e">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-e" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-e">
+        <button class="btn-dl" onclick="downloadCanvas('e')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('e')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+    <!-- Option F: HUD Targeting -->
+    <div class="slot" id="slot-f">
+      <div class="slot-num">06 // Option F</div>
+      <div class="slot-title">HUD Overlay</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-f">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'f')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-f">
+        <img id="previewImg-f" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('f')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-f"></div>
+      <button class="generate-btn" id="generateBtn-f" onclick="generate('f')" disabled><span>Generate F</span></button>
+      <div class="status" id="status-f">
+        <div class="status-text" id="statusText-f">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-f" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-f">
+        <button class="btn-dl" onclick="downloadCanvas('f')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('f')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+    <!-- Option G: Vertical Side Text -->
+    <div class="slot" id="slot-g">
+      <div class="slot-num">07 // Option G</div>
+      <div class="slot-title">Vertical Side</div>
+      <span class="slot-tag">Screen Blend</span>
+      <div class="upload-zone" id="uploadZone-g">
+        <div class="drop-scan"></div>
+        <input type="file" accept="image/*" onchange="handleFile(event,'g')"/>
+        <div class="upload-icon-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#00E5FF" stroke-width="1.5"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg></div>
+        <div class="upload-main-label">+ Select Image</div>
+        <div class="upload-sub-label">JPG · PNG · WEBP</div>
+      </div>
+      <div class="preview-container" id="preview-g">
+        <img id="previewImg-g" src="" alt=""/>
+        <br/><button class="change-btn" onclick="resetSlot('g')">&#8635; Change</button>
+      </div>
+      <div class="error-box" id="error-g"></div>
+      <button class="generate-btn" id="generateBtn-g" onclick="generate('g')" disabled><span>Generate G</span></button>
+      <div class="status" id="status-g">
+        <div class="status-text" id="statusText-g">Processing…</div>
+        <div class="scan-bar-wrap"><div class="scan-bar"></div></div>
+      </div>
+      <canvas class="result-canvas" id="canvas-g" width="1080" height="1080"></canvas>
+      <div class="result-actions" id="actions-g">
+        <button class="btn-dl" onclick="downloadCanvas('g')"><span>Download</span></button>
+        <button class="btn-pk" onclick="pickThis('g')"><span>&#9733; Pick</span></button>
+      </div>
+    </div>
+
+  </div><!-- /slots-grid -->
+</div><!-- /page-wrap -->
+
+<footer>
+  <div class="footer-copy">&copy; 2025 OpenGradient &mdash; PFP Studio</div>
+  <div class="footer-links">
+    <a href="https://opengradient.ai" target="_blank" rel="noopener">opengradient.ai</a>
+    <a href="https://docs.opengradient.ai" target="_blank" rel="noopener">Docs</a>
+    <a href="http://localhost:3000" target="_blank" rel="noopener">Local Dev</a>
   </div>
+</footer>
 
-  <footer>Powered by OpenGradient</footer>
+<div class="pick-toast" id="pick-toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-  <script>
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+<script>
+/* ── TOKEN NOTE ──────────────────────────────────────────────────── */
+// Token is set via REPLICATE_TOKEN env var on the server — never in client code
 
-    let modelsLoaded = false;
-    let uploadedImg = null;
-    let sunglassesCanvas = null;
+/* ── BG NETWORK ANIMATION ────────────────────────────────────────── */
+var bgCanvas = document.getElementById('bg-canvas'), bgCtx = bgCanvas.getContext('2d');
+var W, H, nodes = [];
+function resize() { W = bgCanvas.width = window.innerWidth; H = bgCanvas.height = window.innerHeight; }
+function initNodes() {
+  nodes = Array.from({ length: 45 }, function() {
+    return { x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35, r: Math.random() * 2 + 1, pulse: Math.random() * Math.PI * 2, ps: .015 + Math.random() * .02 };
+  });
+}
+function drawHex() {
+  var s = 28, h = s * Math.sqrt(3);
+  bgCtx.strokeStyle = 'rgba(0,229,255,0.04)'; bgCtx.lineWidth = .5;
+  for (var r = -1; r < H / h + 2; r++) for (var c = -1; c < W / (s * 1.5) + 2; c++) {
+    var cx = c * s * 1.5, cy = r * h + (c % 2 ? h / 2 : 0);
+    bgCtx.beginPath();
+    for (var i = 0; i < 6; i++) { var a = Math.PI / 3 * i - Math.PI / 6; i ? bgCtx.lineTo(cx + s * Math.cos(a), cy + s * Math.sin(a)) : bgCtx.moveTo(cx + s * Math.cos(a), cy + s * Math.sin(a)); }
+    bgCtx.closePath(); bgCtx.stroke();
+  }
+}
+function bgAnim() {
+  bgCtx.clearRect(0, 0, W, H);
+  var bg = bgCtx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H));
+  bg.addColorStop(0, '#080818'); bg.addColorStop(1, '#020208');
+  bgCtx.fillStyle = bg; bgCtx.fillRect(0, 0, W, H);
+  drawHex();
+  for (var k = 0; k < nodes.length; k++) { var n = nodes[k]; n.x += n.vx; n.y += n.vy; n.pulse += n.ps; if (n.x < 0 || n.x > W) n.vx *= -1; if (n.y < 0 || n.y > H) n.vy *= -1; }
+  for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) {
+    var a = nodes[i], b = nodes[j], dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 160) { bgCtx.beginPath(); bgCtx.strokeStyle = 'rgba(0,229,255,' + ((1 - d / 160) * .18) + ')'; bgCtx.lineWidth = .5; bgCtx.moveTo(a.x, a.y); bgCtx.lineTo(b.x, b.y); bgCtx.stroke(); }
+  }
+  for (var k = 0; k < nodes.length; k++) {
+    var n = nodes[k], g = Math.sin(n.pulse) * .5 + .5, rr = n.r * (1 + g * .4);
+    var gr = bgCtx.createRadialGradient(n.x, n.y, 0, n.x, n.y, rr * 6);
+    gr.addColorStop(0, 'rgba(0,229,255,' + (.15 * g) + ')'); gr.addColorStop(1, 'rgba(0,229,255,0)');
+    bgCtx.beginPath(); bgCtx.arc(n.x, n.y, rr * 6, 0, Math.PI * 2); bgCtx.fillStyle = gr; bgCtx.fill();
+    bgCtx.beginPath(); bgCtx.arc(n.x, n.y, rr, 0, Math.PI * 2); bgCtx.fillStyle = 'rgba(0,229,255,' + (.5 + g * .5) + ')'; bgCtx.fill();
+  }
+  requestAnimationFrame(bgAnim);
+}
+window.addEventListener('resize', function() { resize(); initNodes(); });
+resize(); initNodes(); bgAnim();
 
-    // Load models + sunglasses on startup
-    (async function init() {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
-        ]);
-        const raw = await loadImage('assets/sunglasses.png');
-        sunglassesCanvas = removeWhiteBackground(raw);
-        modelsLoaded = true;
-        document.getElementById('modelsStatus').style.display = 'none';
-        if (uploadedImg) document.getElementById('generateBtn').disabled = false;
-      } catch (err) {
-        document.getElementById('modelsStatus').textContent = 'Failed to load models. Try refreshing.';
-        console.error(err);
-      }
-    })();
+/* ── GHOST TEXT ──────────────────────────────────────────────────── */
+var ghosts = ['CANVAS COMPOSITE ACTIVE', 'rembg PROCESSING…', '1080×1080 OUTPUT READY', 'SCREEN BLEND MODE', 'OPENGRADIENT PFP STUDIO', 'BACKGROUND REMOVAL QUEUE', 'BADGE STYLE A–G', 'TGE COMING'];
+var gc = document.getElementById('ghost-container');
+function spawnGhost() {
+  var el = document.createElement('div'); el.className = 'ghost-item';
+  el.textContent = ghosts[Math.floor(Math.random() * ghosts.length)];
+  el.style.left = (Math.random() * 90) + '%';
+  el.style.top = (20 + Math.random() * 70) + '%';
+  var d = 6 + Math.random() * 8; el.style.animationDuration = d + 's';
+  gc.appendChild(el); setTimeout(function() { el.remove(); }, d * 1000);
+}
+setInterval(spawnGhost, 2400); spawnGhost();
 
-    function loadImage(src) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-      });
-    }
+/* ── SLOT STATE ───────────────────────────────────────────────────── */
+var uploadedFiles = { a: null, b: null, c: null, d: null, e: null, f: null, g: null };
+var SLOTS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 
-    function removeWhiteBackground(img, threshold = 235) {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, c.width, c.height);
-      const px = imageData.data;
-      for (let i = 0; i < px.length; i += 4) {
-        if (px[i] > threshold && px[i + 1] > threshold && px[i + 2] > threshold) {
-          px[i + 3] = 0;
-        }
-      }
-      ctx.putImageData(imageData, 0, 0);
-      return c;
-    }
+function handleFile(event, slot) {
+  var file = event.target.files[0];
+  if (!file) return;
+  uploadedFiles[slot] = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('previewImg-' + slot).src = e.target.result;
+    document.getElementById('uploadZone-' + slot).style.display = 'none';
+    document.getElementById('preview-' + slot).style.display = 'block';
+    document.getElementById('generateBtn-' + slot).disabled = false;
+    document.getElementById('error-' + slot).style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
 
-    function avgPoint(pts) {
-      return {
-        x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
-        y: pts.reduce((s, p) => s + p.y, 0) / pts.length
-      };
-    }
-
-    // Drag & drop
-    const uploadZone = document.getElementById('uploadZone');
-    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-    uploadZone.addEventListener('drop', e => {
-      e.preventDefault();
-      uploadZone.classList.remove('drag-over');
-      const file = e.dataTransfer.files[0];
-      if (file?.type.startsWith('image/')) handleFile(file);
-    });
-    document.getElementById('fileInput').addEventListener('change', e => {
-      if (e.target.files[0]) handleFile(e.target.files[0]);
-    });
-
-    function handleFile(file) {
-      const reader = new FileReader();
-      reader.onload = async e => {
-        const dataUrl = e.target.result;
-        document.getElementById('previewImg').src = dataUrl;
-        document.getElementById('uploadZone').style.display = 'none';
-        document.getElementById('previewContainer').style.display = 'block';
-        uploadedImg = await loadImage(dataUrl);
-        document.getElementById('generateBtn').disabled = !modelsLoaded;
+SLOTS.forEach(function(slot) {
+  var zone = document.getElementById('uploadZone-' + slot);
+  zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', function() { zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', function(e) {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    var file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      uploadedFiles[slot] = file;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        document.getElementById('previewImg-' + slot).src = ev.target.result;
+        document.getElementById('uploadZone-' + slot).style.display = 'none';
+        document.getElementById('preview-' + slot).style.display = 'block';
+        document.getElementById('generateBtn-' + slot).disabled = false;
       };
       reader.readAsDataURL(file);
     }
+  });
+});
 
-    async function generate() {
-      const btn = document.getElementById('generateBtn');
-      const errorBox = document.getElementById('errorBox');
-      errorBox.style.display = 'none';
-      btn.disabled = true;
-      document.getElementById('status').style.display = 'block';
+function resetSlot(slot) {
+  uploadedFiles[slot] = null;
+  document.getElementById('uploadZone-' + slot).style.display = 'flex';
+  document.getElementById('preview-' + slot).style.display = 'none';
+  document.getElementById('generateBtn-' + slot).disabled = true;
+  document.getElementById('error-' + slot).style.display = 'none';
+  document.getElementById('canvas-' + slot).style.display = 'none';
+  document.getElementById('actions-' + slot).style.display = 'none';
+}
 
-      try {
-        const detection = await faceapi
-          .detectSingleFace(uploadedImg, new faceapi.TinyFaceDetectorOptions({ inputSize: 512 }))
-          .withFaceLandmarks();
+/* ── DARK BACKGROUND DETECTION ───────────────────────────────────── */
+// Sample corner regions of the image. If average luminance is below
+// threshold, the background is considered dark → use screen blend.
+function hasDarkBackground(dataUrl) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      var size = 32; // px to sample at each corner
+      var c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      var cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0);
+      var W = img.width, H = img.height;
+      var regions = [
+        [0, 0], [W - size, 0], [0, H - size], [W - size, H - size]
+      ];
+      var total = 0, count = 0;
+      regions.forEach(function(r) {
+        var px = cx.getImageData(r[0], r[1], size, size).data;
+        for (var i = 0; i < px.length; i += 4) {
+          // skip fully transparent pixels
+          if (px[i + 3] < 10) continue;
+          total += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          count++;
+        }
+      });
+      var avgLuminance = count > 0 ? total / count : 0;
+      resolve(avgLuminance < 60); // 0–255 scale; <60 = dark
+    };
+    img.onerror = function() { resolve(false); };
+    img.src = dataUrl;
+  });
+}
 
-        if (!detection) throw new Error('No face detected. Try a clearer, front-facing photo.');
-
-        const lm = detection.landmarks;
-        const leftEye = avgPoint(lm.getLeftEye());
-        const rightEye = avgPoint(lm.getRightEye());
-
-        const dx = rightEye.x - leftEye.x;
-        const dy = rightEye.y - leftEye.y;
-        const angle = Math.atan2(dy, dx);
-        const eyeDist = Math.hypot(dx, dy);
-
-        // Scale sunglasses to span ~3x inter-eye distance (temple to temple)
-        const glassesW = eyeDist * 3.2;
-        const glassesH = glassesW * (sunglassesCanvas.height / sunglassesCanvas.width);
-
-        // Position at eye midpoint, shifted slightly up
-        const cx = (leftEye.x + rightEye.x) / 2;
-        const cy = (leftEye.y + rightEye.y) / 2 - eyeDist * 0.15;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = uploadedImg.naturalWidth;
-        canvas.height = uploadedImg.naturalHeight;
-        const ctx = canvas.getContext('2d');
-
-        ctx.drawImage(uploadedImg, 0, 0);
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.drawImage(sunglassesCanvas, -glassesW / 2, -glassesH / 2, glassesW, glassesH);
-        ctx.restore();
-
-        showResult(canvas.toDataURL('image/png'));
-      } catch (err) {
-        errorBox.textContent = 'Error: ' + err.message;
-        errorBox.style.display = 'block';
-        btn.disabled = false;
-      } finally {
-        document.getElementById('status').style.display = 'none';
-      }
+/* ── GENERATE ────────────────────────────────────────────────────── */
+async function generate(slot) {
+  var btn = document.getElementById('generateBtn-' + slot);
+  var errorBox = document.getElementById('error-' + slot);
+  var status = document.getElementById('status-' + slot);
+  errorBox.style.display = 'none';
+  btn.disabled = true;
+  status.style.display = 'block';
+  try {
+    var base64DataUrl = await fileToBase64(uploadedFiles[slot]);
+    setStatus(slot, 'Analysing image…');
+    var darkBg = await hasDarkBackground(base64DataUrl);
+    var useScreen = darkBg;
+    var subjectDataUrl;
+    if (useScreen) {
+      subjectDataUrl = base64DataUrl;
+      setStatus(slot, 'Dark background detected — rendering…');
+    } else {
+      setStatus(slot, 'Removing background…');
+      subjectDataUrl = await removeBackground(base64DataUrl, slot);
+      setStatus(slot, 'Compositing…');
     }
+    await compositeImage(slot, subjectDataUrl, useScreen);
+    document.getElementById('canvas-' + slot).style.display = 'block';
+    document.getElementById('actions-' + slot).style.display = 'flex';
+  } catch (err) {
+    errorBox.textContent = 'Error: ' + err.message;
+    errorBox.style.display = 'block';
+    btn.disabled = false;
+  } finally {
+    status.style.display = 'none';
+  }
+}
 
-    function showResult(dataUrl) {
-      document.getElementById('uploadCard').style.display = 'none';
-      document.getElementById('resultImg').src = dataUrl;
-      document.getElementById('downloadBtn').href = dataUrl;
-      const resultCard = document.getElementById('resultCard');
-      resultCard.style.display = 'block';
-      resultCard.scrollIntoView({ behavior: 'smooth' });
-    }
+async function removeBackground(base64DataUrl, slot) {
+  var createRes = await fetch('/replicate/v1/predictions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version: 'fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003', input: { image: base64DataUrl } })
+  });
+  if (!createRes.ok) { var err = await createRes.json().catch(function() { return {}; }); throw new Error(err.detail || 'API error ' + createRes.status); }
+  var prediction = await createRes.json();
+  while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && prediction.status !== 'canceled') {
+    setStatus(slot, 'Removing background (' + prediction.status + ')…');
+    await sleep(1200);
+    var pollRes = await fetch('/replicate/v1/predictions/' + prediction.id);
+    prediction = await pollRes.json();
+  }
+  if (prediction.status !== 'succeeded') throw new Error(prediction.error || 'Background removal failed');
+  var outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+  if (!outputUrl) throw new Error('No output from rembg');
+  var imgRes = await fetch(outputUrl);
+  var blob = await imgRes.blob();
+  return await blobToDataUrl(blob);
+}
 
-    function resetUpload() {
-      uploadedImg = null;
-      document.getElementById('fileInput').value = '';
-      document.getElementById('uploadZone').style.display = 'block';
-      document.getElementById('previewContainer').style.display = 'none';
-      document.getElementById('generateBtn').disabled = true;
-      document.getElementById('errorBox').style.display = 'none';
+/* ── CANVAS COMPOSITE ────────────────────────────────────────────── */
+async function compositeImage(slot, subjectDataUrl, useScreen) {
+  var canvas = document.getElementById('canvas-' + slot);
+  var ctx = canvas.getContext('2d');
+  var SIZE = 1080;
+  canvas.width = SIZE; canvas.height = SIZE;
+  await drawBackground(ctx, SIZE);
+  var subject = await loadImage(subjectDataUrl);
+  if (useScreen) {
+    var scale = Math.min((SIZE * 0.92) / subject.height, (SIZE * 0.92) / subject.width);
+    var drawW = subject.width * scale, drawH = subject.height * scale;
+    var drawX = (SIZE - drawW) / 2, drawY = (SIZE - drawH) / 2;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.drawImage(subject, drawX, drawY, drawW, drawH);
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    var trimmed = trimTransparent(subject);
+    var isSquarish = trimmed.w / trimmed.h > 0.75;
+    var scale = Math.min((SIZE * 0.88) / trimmed.h, (SIZE * 0.88) / trimmed.w);
+    var drawW = trimmed.w * scale, drawH = trimmed.h * scale;
+    var drawX = (SIZE - drawW) / 2, drawY = isSquarish ? (SIZE - drawH) / 2 : SIZE - drawH;
+    ctx.drawImage(trimmed.canvas, trimmed.x, trimmed.y, trimmed.w, trimmed.h, drawX, drawY, drawW, drawH);
+    if (!isSquarish) {
+      var fade = ctx.createLinearGradient(0, SIZE * 0.82, 0, SIZE);
+      fade.addColorStop(0, 'rgba(5,12,16,0)'); fade.addColorStop(1, 'rgba(5,12,16,0.55)');
+      ctx.fillStyle = fade; ctx.fillRect(0, SIZE * 0.82, SIZE, SIZE * 0.18);
     }
+  }
+  await drawOGLogo(ctx, SIZE);
+  drawCornerAccents(ctx, SIZE);
+  if (slot === 'a') drawBadgePill(ctx, SIZE);
+  if (slot === 'b') drawBadgeBar(ctx, SIZE);
+  if (slot === 'c') drawBadgeCornerTag(ctx, SIZE);
+  if (slot === 'd') drawBadgeNeonText(ctx, SIZE);
+  if (slot === 'e') drawBadgeRibbon(ctx, SIZE);
+  if (slot === 'f') drawBadgeHUD(ctx, SIZE);
+  if (slot === 'g') drawBadgeVertical(ctx, SIZE);
+}
 
-    function resetAll() {
-      resetUpload();
-      document.getElementById('resultCard').style.display = 'none';
-      document.getElementById('uploadCard').style.display = 'block';
+async function drawBackground(ctx, SIZE) {
+  ctx.fillStyle = '#050f14'; ctx.fillRect(0, 0, SIZE, SIZE);
+  var topGlow = ctx.createRadialGradient(SIZE / 2, -SIZE * 0.1, 0, SIZE / 2, -SIZE * 0.1, SIZE * 1.1);
+  topGlow.addColorStop(0, 'rgba(36,188,227,0.55)'); topGlow.addColorStop(0.4, 'rgba(36,188,227,0.2)');
+  topGlow.addColorStop(0.7, 'rgba(14,75,91,0.1)'); topGlow.addColorStop(1, 'rgba(5,15,20,0)');
+  ctx.fillStyle = topGlow; ctx.fillRect(0, 0, SIZE, SIZE);
+  var spotlight = ctx.createRadialGradient(SIZE / 2, SIZE * 0.42, 0, SIZE / 2, SIZE * 0.42, SIZE * 0.5);
+  spotlight.addColorStop(0, 'rgba(36,188,227,0.18)'); spotlight.addColorStop(1, 'rgba(36,188,227,0)');
+  ctx.fillStyle = spotlight; ctx.fillRect(0, 0, SIZE, SIZE);
+  var vignette = ctx.createRadialGradient(SIZE / 2, SIZE / 2, SIZE * 0.35, SIZE / 2, SIZE / 2, SIZE * 0.85);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, SIZE, SIZE);
+  drawGrid(ctx, SIZE);
+  var streakY = SIZE * 0.72;
+  var streak = ctx.createLinearGradient(0, streakY, SIZE, streakY);
+  streak.addColorStop(0, 'rgba(36,188,227,0)'); streak.addColorStop(0.3, 'rgba(36,188,227,0.4)');
+  streak.addColorStop(0.5, 'rgba(36,188,227,0.65)'); streak.addColorStop(0.7, 'rgba(36,188,227,0.4)');
+  streak.addColorStop(1, 'rgba(36,188,227,0)');
+  ctx.fillStyle = streak; ctx.fillRect(0, streakY - 1, SIZE, 2);
+}
+
+function drawGrid(ctx, SIZE) {
+  ctx.save(); ctx.strokeStyle = 'rgba(36,188,227,0.09)'; ctx.lineWidth = 1;
+  var step = SIZE / 12;
+  for (var x = 0; x <= SIZE; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, SIZE); ctx.stroke(); }
+  for (var y = 0; y <= SIZE; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawCornerAccents(ctx, SIZE) {
+  var len = SIZE * 0.07, margin = SIZE * 0.04;
+  ctx.save(); ctx.strokeStyle = 'rgba(36,188,227,0.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(margin, margin + len); ctx.lineTo(margin, margin); ctx.lineTo(margin + len, margin); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SIZE - margin - len, margin); ctx.lineTo(SIZE - margin, margin); ctx.lineTo(SIZE - margin, margin + len); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(margin, SIZE - margin - len); ctx.lineTo(margin, SIZE - margin); ctx.lineTo(margin + len, SIZE - margin); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SIZE - margin - len, SIZE - margin); ctx.lineTo(SIZE - margin, SIZE - margin); ctx.lineTo(SIZE - margin, SIZE - margin - len); ctx.stroke();
+  ctx.restore();
+}
+
+async function drawOGLogo(ctx, canvasSize) {
+  try {
+    var res = await fetch('assets/og-symbol-white.svg');
+    var svgText = await res.text();
+    var blob = new Blob([svgText], { type: 'image/svg+xml' });
+    var url = URL.createObjectURL(blob);
+    var img = await loadImage(url);
+    URL.revokeObjectURL(url);
+    var logoSize = canvasSize * 0.085, margin = canvasSize * 0.045;
+    ctx.shadowColor = 'rgba(36,188,227,0.5)'; ctx.shadowBlur = 18; ctx.globalAlpha = 1.0;
+    ctx.drawImage(img, margin, margin, logoSize, logoSize);
+    ctx.shadowBlur = 0;
+  } catch (e) { console.warn('Logo failed:', e); }
+}
+
+/* ── BADGE STYLES ────────────────────────────────────────────────── */
+function drawBadgePill(ctx, SIZE) {
+  var cx = SIZE / 2, cy = SIZE * 0.895, padX = SIZE * 0.04, r = SIZE * 0.03;
+  ctx.save();
+  ctx.font = '700 ' + (SIZE * 0.038) + "px 'Geist','Segoe UI',sans-serif";
+  var label = 'TGE COMING', textW = ctx.measureText(label).width;
+  var dotR = SIZE * 0.012, dotGap = SIZE * 0.02, totalW = dotR * 2 + dotGap + textW + padX * 2, totalH = SIZE * 0.062;
+  var x = cx - totalW / 2, y = cy - totalH / 2;
+  ctx.beginPath(); ctx.roundRect(x, y, totalW, totalH, r);
+  ctx.fillStyle = 'rgba(5,15,20,0.82)'; ctx.fill();
+  ctx.strokeStyle = '#24BCE3'; ctx.lineWidth = SIZE * 0.003;
+  ctx.shadowColor = 'rgba(36,188,227,0.6)'; ctx.shadowBlur = SIZE * 0.025; ctx.stroke(); ctx.shadowBlur = 0;
+  var dotX = x + padX + dotR;
+  ctx.beginPath(); ctx.arc(dotX, cy, dotR, 0, Math.PI * 2);
+  ctx.fillStyle = '#24BCE3'; ctx.shadowColor = 'rgba(36,188,227,0.9)'; ctx.shadowBlur = SIZE * 0.02; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, dotX + dotR + dotGap, cy);
+  ctx.restore();
+}
+
+function drawBadgeBar(ctx, SIZE) {
+  var barH = SIZE * 0.13, barY = SIZE - barH;
+  ctx.save();
+  var barBg = ctx.createLinearGradient(0, barY, 0, SIZE);
+  barBg.addColorStop(0, 'rgba(5,20,28,0.88)'); barBg.addColorStop(1, 'rgba(5,15,20,0.97)');
+  ctx.fillStyle = barBg; ctx.fillRect(0, barY, SIZE, barH);
+  ctx.shadowColor = 'rgba(36,188,227,0.8)'; ctx.shadowBlur = SIZE * 0.015;
+  ctx.strokeStyle = '#24BCE3'; ctx.lineWidth = SIZE * 0.003;
+  ctx.beginPath(); ctx.moveTo(0, barY); ctx.lineTo(SIZE, barY); ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff'; ctx.font = '800 ' + (SIZE * 0.052) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillText('TGE COMING', SIZE / 2, barY + barH * 0.46);
+  ctx.fillStyle = '#24BCE3'; ctx.font = '600 ' + (SIZE * 0.022) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillText('OPENGRADIENT', SIZE / 2, barY + barH * 0.78);
+  ctx.restore();
+}
+
+function drawBadgeCornerTag(ctx, SIZE) {
+  var margin = SIZE * 0.04, tagW = SIZE * 0.28, tagH = SIZE * 0.1;
+  var x = SIZE - margin - tagW, y = margin, r = SIZE * 0.015;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(x, y, tagW, tagH, r);
+  ctx.fillStyle = 'rgba(5,15,20,0.85)'; ctx.fill();
+  ctx.strokeStyle = '#24BCE3'; ctx.lineWidth = SIZE * 0.003;
+  ctx.shadowColor = 'rgba(36,188,227,0.5)'; ctx.shadowBlur = SIZE * 0.018; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#24BCE3'; ctx.font = '800 ' + (SIZE * 0.042) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillText('TGE', x + tagW * 0.35, y + tagH * 0.42);
+  ctx.strokeStyle = 'rgba(36,188,227,0.4)'; ctx.lineWidth = SIZE * 0.002;
+  ctx.beginPath(); ctx.moveTo(x + tagW * 0.6, y + tagH * 0.18); ctx.lineTo(x + tagW * 0.6, y + tagH * 0.82); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.font = '700 ' + (SIZE * 0.022) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillText('COMING', x + tagW * 0.8, y + tagH * 0.42);
+  ctx.fillStyle = '#24BCE3'; ctx.font = '600 ' + (SIZE * 0.018) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillText('SOON', x + tagW * 0.8, y + tagH * 0.72);
+  ctx.restore();
+}
+
+function drawBadgeNeonText(ctx, SIZE) {
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  var cy = SIZE * 0.895;
+  ctx.font = '800 ' + (SIZE * 0.1) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.shadowColor = 'rgba(36,188,227,1)'; ctx.shadowBlur = SIZE * 0.04; ctx.fillStyle = '#24BCE3';
+  ctx.fillText('TGE', SIZE / 2, cy - SIZE * 0.058);
+  ctx.shadowBlur = SIZE * 0.08; ctx.fillText('TGE', SIZE / 2, cy - SIZE * 0.058); ctx.shadowBlur = 0;
+  ctx.font = '600 ' + (SIZE * 0.038) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.shadowColor = 'rgba(36,188,227,0.7)'; ctx.shadowBlur = SIZE * 0.025;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fillText('C O M I N G', SIZE / 2, cy + SIZE * 0.008);
+  ctx.shadowBlur = 0; ctx.restore();
+}
+
+function drawBadgeRibbon(ctx, SIZE) {
+  ctx.save();
+  var ribbonSize = SIZE * 0.36;
+  ctx.translate(SIZE, 0); ctx.rotate(Math.PI / 4);
+  var rW = ribbonSize * 1.4, rH = SIZE * 0.085, rx = -rW / 2, ry = ribbonSize * 0.28;
+  ctx.fillStyle = '#24BCE3'; ctx.shadowColor = 'rgba(36,188,227,0.8)'; ctx.shadowBlur = SIZE * 0.025;
+  ctx.fillRect(rx, ry, rW, rH);
+  ctx.fillStyle = 'rgba(5,15,20,0.5)';
+  ctx.fillRect(rx, ry, rW, SIZE * 0.005); ctx.fillRect(rx, ry + rH - SIZE * 0.005, rW, SIZE * 0.005);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#050f14'; ctx.font = '800 ' + (SIZE * 0.042) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TGE COMING', 0, ry + rH / 2);
+  ctx.restore();
+}
+
+function drawBadgeHUD(ctx, SIZE) {
+  ctx.save();
+  var lineColor = 'rgba(36,188,227,0.7)', lineW = SIZE * 0.002, glowColor = 'rgba(36,188,227,0.9)';
+  var labelY = SIZE * 0.875, labelX = SIZE * 0.07;
+  ctx.strokeStyle = lineColor; ctx.lineWidth = lineW;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = SIZE * 0.012;
+  ctx.beginPath(); ctx.moveTo(SIZE * 0.06, labelY - SIZE * 0.032); ctx.lineTo(SIZE * 0.06 + SIZE * 0.22, labelY - SIZE * 0.032); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SIZE * 0.06, labelY - SIZE * 0.032); ctx.lineTo(SIZE * 0.06, labelY + SIZE * 0.01); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.font = '800 ' + (SIZE * 0.052) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(36,188,227,0.6)'; ctx.shadowBlur = SIZE * 0.02;
+  ctx.fillText('TGE COMING', labelX, labelY); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#24BCE3'; ctx.lineWidth = SIZE * 0.003;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = SIZE * 0.015;
+  ctx.beginPath(); ctx.moveTo(labelX, labelY + SIZE * 0.038); ctx.lineTo(labelX + SIZE * 0.48, labelY + SIZE * 0.038); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.font = '400 ' + (SIZE * 0.02) + "px 'Geist Mono',monospace";
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(36,188,227,0.75)';
+  ctx.fillText('OPENGRADIENT', SIZE * 0.93, labelY + SIZE * 0.038);
+  var bx = SIZE * 0.88, by = SIZE * 0.08, bl = SIZE * 0.04;
+  ctx.strokeStyle = 'rgba(36,188,227,0.5)'; ctx.lineWidth = lineW;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = SIZE * 0.01;
+  ctx.beginPath(); ctx.moveTo(bx, by + bl); ctx.lineTo(bx, by); ctx.lineTo(bx + bl, by); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBadgeVertical(ctx, SIZE) {
+  ctx.save();
+  var stripW = SIZE * 0.072, stripX = SIZE - stripW;
+  var stripBg = ctx.createLinearGradient(stripX, 0, SIZE, 0);
+  stripBg.addColorStop(0, 'rgba(5,15,20,0)'); stripBg.addColorStop(0.3, 'rgba(5,20,30,0.75)'); stripBg.addColorStop(1, 'rgba(5,20,30,0.92)');
+  ctx.fillStyle = stripBg; ctx.fillRect(stripX, 0, stripW, SIZE);
+  ctx.strokeStyle = '#24BCE3'; ctx.lineWidth = SIZE * 0.003;
+  ctx.shadowColor = 'rgba(36,188,227,0.8)'; ctx.shadowBlur = SIZE * 0.015;
+  ctx.beginPath(); ctx.moveTo(stripX, SIZE * 0.05); ctx.lineTo(stripX, SIZE * 0.95); ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.translate(stripX + stripW / 2, SIZE / 2); ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '800 ' + (SIZE * 0.048) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillStyle = '#24BCE3'; ctx.shadowColor = 'rgba(36,188,227,0.7)'; ctx.shadowBlur = SIZE * 0.02;
+  ctx.fillText('TGE', SIZE * 0.1, 0); ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.arc(0, 0, SIZE * 0.008, 0, Math.PI * 2); ctx.fillStyle = 'rgba(36,188,227,0.5)'; ctx.fill();
+  ctx.font = '700 ' + (SIZE * 0.036) + "px 'Geist','Segoe UI',sans-serif";
+  ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(36,188,227,0.4)'; ctx.shadowBlur = SIZE * 0.012;
+  ctx.fillText('COMING', -SIZE * 0.115, 0); ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+/* ── TRIM TRANSPARENT ────────────────────────────────────────────── */
+function trimTransparent(img) {
+  var oc = document.createElement('canvas'); oc.width = img.width; oc.height = img.height;
+  var octx = oc.getContext('2d'); octx.drawImage(img, 0, 0);
+  var data = octx.getImageData(0, 0, oc.width, oc.height).data;
+  var minX = oc.width, minY = oc.height, maxX = 0, maxY = 0;
+  for (var y = 0; y < oc.height; y++) for (var x = 0; x < oc.width; x++) {
+    if (data[(y * oc.width + x) * 4 + 3] > 10) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
-  </script>
+  }
+  if (maxX === 0 && maxY === 0) return { canvas: oc, x: 0, y: 0, w: oc.width, h: oc.height };
+  var pad = Math.round(oc.width * 0.01);
+  return { canvas: oc, x: Math.max(0, minX - pad), y: Math.max(0, minY - pad), w: Math.min(oc.width, maxX - minX + pad * 2), h: Math.min(oc.height, maxY - minY + pad * 2) };
+}
+
+/* ── DOWNLOAD & PICK ─────────────────────────────────────────────── */
+function downloadCanvas(slot) {
+  var canvas = document.getElementById('canvas-' + slot);
+  var link = document.createElement('a');
+  link.download = 'og-pfp-option-' + slot + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function pickThis(slot) {
+  var toast = document.getElementById('pick-toast');
+  toast.textContent = 'Option ' + slot.toUpperCase() + ' selected!';
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 2400);
+}
+
+/* ── UTILS ───────────────────────────────────────────────────────── */
+function setStatus(slot, text) { document.getElementById('statusText-' + slot).textContent = text; }
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) { var r = new FileReader(); r.onload = function() { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(file); });
+}
+function blobToDataUrl(blob) {
+  return new Promise(function(resolve, reject) { var r = new FileReader(); r.onload = function() { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(blob); });
+}
+function loadImage(src) {
+  return new Promise(function(resolve, reject) { var img = new Image(); img.onload = function() { resolve(img); }; img.onerror = reject; img.src = src; });
+}
+</script>
 </body>
 </html>

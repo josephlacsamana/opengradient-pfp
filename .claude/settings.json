@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\Joseph\\.claude\\projects\\c--Users-Joseph-opengradient-pfp\\memory"
+    ],
+    "allow": [
+      "Read(//c/Users/Joseph/.claude/projects/c--Users-Joseph-opengradient-pfp/240ba297-724c-4d91-bd5f-c54ae2821c34/tool-results/**)"
+    ]
+  }
+}

@@ -1,57 +1,59 @@
 # OpenGradient PFP Generator
 
-A single-page web app that places OpenGradient-branded sunglasses on uploaded profile pictures using face detection and canvas compositing.
+A single-page web app that generates OpenGradient-branded profile pictures.
 
 ## What it does
-- User uploads their profile picture
-- face-api.js detects facial landmarks (eye positions) in the browser
-- The OG sunglasses image is scaled, rotated, and composited precisely over the eyes
-- User downloads the result and sets it as their profile picture
+1. User uploads their profile picture
+2. Background is removed via Replicate API (`cjwbw/rembg`)
+3. Person is composited onto an OpenGradient-branded background using HTML5 Canvas
+4. Output is a 1:1 square PNG ready to download and use as a profile picture
 
 ## Stack
 - Pure HTML/CSS/JS — no framework, no build step
-- face-api.js (CDN) for in-browser face landmark detection
+- Replicate API (`cjwbw/rembg`) for background removal
 - HTML5 Canvas for image compositing
-- Run by opening `index.html` directly in a browser
+- Node.js proxy server (`server.js`) to bypass CORS — run with `node server.js`, visit `http://localhost:3000`
 
-## Assets
-- `assets/sunglasses.png` — OG sunglasses with OpenGradient logo on the side (transparent PNG, tight crop)
+## API
+- **Provider:** Replicate (`https://api.replicate.com`)
+- **Model:** `cjwbw/rembg` — background removal, ~$0.0003/image
+- **Token:** stored in `REPLICATE_TOKEN` const in `index.html` — never commit a real token
+- Proxy prefix: frontend calls `/replicate/v1/...`, server forwards to `https://api.replicate.com/v1/...`
 
-## Implementation Phases
+## Brand
+### Colors
+- `#24BCE3` — Caribbean Blue (PRIMARY — main brand color)
+- `#0E4B5B` — Teal Dark Blue (dark background)
+- `#E9F8FC` — Clear Skies (light accent)
+- `#FFFFFF` — White
 
-### Phase A — Project Setup
-- [x] Create `assets/` folder
-- [x] Save OG sunglasses as `assets/sunglasses.png` (transparent PNG)
-- [x] Update CLAUDE.md
+### Gradients
+- Background: `linear-gradient(135deg, #0E4B5B, #0a2f3a)`
+- Accent glow: radial from `#24BCE3` to transparent
 
-### Phase B — Face Detection
-- [x] Load face-api.js from CDN (@vladmandic/face-api)
-- [x] Load tinyFaceDetector + faceLandmark68 models
-- [x] On image upload, run landmark detection to get left/right eye coordinates
+### Fonts
+- Primary: Geist (load from Bunny Fonts CDN)
+- Secondary: Geist Mono
 
-### Phase C — Canvas Compositing Engine
-- [x] Calculate sunglasses position from eye midpoint
-- [x] Calculate rotation angle from eye-to-eye vector
-- [x] Calculate scale from inter-eye distance (3.2x eyeDist)
-- [x] White background removal from sunglasses PNG (threshold 235)
-- [x] Draw user photo on canvas, overlay sunglasses
-- [x] Export composited canvas as PNG for download
+### Assets
+- `assets/og-symbol-white.svg` — OG symbol (diamond/knot) in white, used as watermark on dark backgrounds
 
-### Phase D — UI Cleanup
-- [x] Remove Replicate API code
-- [x] Simplified UI: upload → detect → composite → download
-- [x] Loading state while face detection runs
-- [x] Error state: no face detected
+## Canvas Compositing
+Output canvas: 1080×1080px (1:1 square)
 
-### Phase E — Polish & Edge Cases
-- [ ] Handle multiple faces
-- [ ] Fine-tune scale/offset constants for best fit
-- [ ] Optional manual adjustment slider (scale/vertical offset)
-- [ ] Final visual QA
+Background layers (bottom to top):
+1. Dark gradient fill: `#0E4B5B` → `#0a2f3a` (top-left to bottom-right)
+2. Subtle radial glow: `#24BCE3` soft circle, ~0.15 opacity, centered bottom
+3. OG symbol watermark: white SVG, bottom-right corner, ~20% canvas width, ~0.12 opacity
+4. Subject: rembg-processed PNG, centered, scaled to fill ~80-85% of canvas height
 
-## Commit Convention
-Always use 1-liner with `;` (PowerShell): `git add . ; git commit -m "message" ; git push`
+## Cost Estimate
+- `cjwbw/rembg`: ~$0.0003/image
+- 1,000 users: ~$0.30
+- 15,000 users: ~$4.50
 
 ## Notes
-- face-api.js models must be served over HTTP (not file://) — use VS Code Live Server or similar
-- Do NOT commit `index.html` with Replicate token filled in
+- Run `node server.js` to start the proxy (port 3000)
+- REPLICATE_TOKEN must be set in `index.html` at runtime — never commit a real token
+- Output canvas should be 1080×1080 for best PFP quality
+- Caribbean Blue (`#24BCE3`) is the PRIMARY brand color — use it for UI accents, CTAs, highlights
