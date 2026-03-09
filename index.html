@@ -536,10 +536,11 @@ async function generate(slot) {
 }
 
 async function removeBackground(base64DataUrl, slot) {
+  var apiImage = await compressForApi(base64DataUrl);
   var createRes = await fetch('/replicate/v1/predictions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ version: 'fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003', input: { image: base64DataUrl } })
+    body: JSON.stringify({ version: 'fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003', input: { image: apiImage } })
   });
   if (!createRes.ok) { var err = await createRes.json().catch(function() { return {}; }); throw new Error(err.detail || 'API error ' + createRes.status); }
   var prediction = await createRes.json();
@@ -826,6 +827,24 @@ function blobToDataUrl(blob) {
 }
 function loadImage(src) {
   return new Promise(function(resolve, reject) { var img = new Image(); img.onload = function() { resolve(img); }; img.onerror = reject; img.src = src; });
+}
+// Downscale image to keep base64 payload under Vercel's 4.5MB limit
+async function compressForApi(dataUrl, maxBytes) {
+  maxBytes = maxBytes || 3500000; // ~3.5MB to stay safe
+  if (dataUrl.length < maxBytes) return dataUrl;
+  var img = await loadImage(dataUrl);
+  var scale = 1;
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  while (scale > 0.1) {
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    var result = canvas.toDataURL('image/jpeg', 0.85);
+    if (result.length < maxBytes) return result;
+    scale -= 0.1;
+  }
+  return canvas.toDataURL('image/jpeg', 0.7);
 }
 </script>
 </body>
