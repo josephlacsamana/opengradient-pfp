@@ -9,11 +9,16 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
-  const replicatePath = req.url.replace(/^\/api\/replicate/, '').replace(/^\/replicate/, '');
+  // Extract the Replicate API path from query param (set by vercel.json rewrite)
+  const replicatePath = req.query.replicatePath || req.url.replace(/^\/api\/proxy\??.*/, '');
+  if (!replicatePath) {
+    return res.status(400).json({ error: 'Missing replicatePath' });
+  }
+
   const token = process.env.REPLICATE_TOKEN || '';
   const body = req.method !== 'GET' ? JSON.stringify(req.body) : '';
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const options = {
       hostname: 'api.replicate.com',
       path: replicatePath,
